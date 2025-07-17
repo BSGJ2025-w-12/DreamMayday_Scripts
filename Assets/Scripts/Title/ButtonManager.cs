@@ -53,8 +53,17 @@ public class ButtonManager : MonoBehaviour
     private const int blockCount = 10;
     private float spacing = 0.6f;
 
+    private Shader urpLitShader; // 追加
+
     void Start()
     {
+        // URP Lit Shaderを取得
+        urpLitShader = Shader.Find("Universal Render Pipeline/Lit");
+        if (urpLitShader == null)
+        {
+            Debug.LogError("URP Lit Shaderが見つかりません。Graphics Settings を確認してください。");
+        }
+
         languageChanger = this.AddComponent<LangageChanger>();
         Time.timeScale = 1;
 
@@ -77,10 +86,10 @@ public class ButtonManager : MonoBehaviour
         bool down = Gamepad.current?.dpad.down.wasPressedThisFrame == true || Input.GetKeyDown(KeyCode.DownArrow)
             || (prevStickY > -0.5f && stick.y < -0.5f); // 下に倒した瞬間
 
-        // スライダー調整時のみ左右スティックを有効化
+        // スライダー調整時 or 言語選択時のみ左右スティックを有効化
         bool right = false;
         bool left = false;
-        if (isShowSetting && isUseSlider)
+        if (isShowSetting && (isUseSlider || settingArrowX == 1 || settingArrowX == 2))
         {
             right = Gamepad.current?.dpad.right.wasPressedThisFrame == true 
                 || Input.GetKeyDown(KeyCode.RightArrow) 
@@ -165,10 +174,12 @@ public class ButtonManager : MonoBehaviour
                     _slider = settingArrowY == 1 ? BGMSlider : SESlider;
                     _slider.value += right ? 5 : -5;
                 }
-                else if (settingArrowY == 4)
+                // ▼ここを修正
+                else if (settingArrowX == 1 || settingArrowX == 2)
                 {
                     SoundManager.Instance.PlaySE("Cursor");
-                    settingArrowX = settingArrowX == 1 ? 2 : 1;
+                    // 1⇔2をトグル
+                    settingArrowX = (settingArrowX == 1) ? 2 : 1;
                 }
             }
 
@@ -267,8 +278,11 @@ public class ButtonManager : MonoBehaviour
             cube.transform.localScale = new Vector3(0.5f, 0.5f, 0.01f);
 
             Renderer rend = cube.GetComponent<Renderer>();
-            rend.material = new Material(rend.material); // 個別マテリアル化
-            rend.material.color = blockOffColor;
+
+            // URP Lit Shaderを使ったマテリアルを割り当て
+            Material mat = new Material(urpLitShader);
+            mat.color = blockOffColor;
+            rend.material = mat;
 
             targetArray[i] = cube;
         }
